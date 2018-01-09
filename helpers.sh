@@ -417,64 +417,30 @@ report_build_metrics() {
 # Deploy build artifacts to bintray if configured.
 ################################################################################
 deploy() {
-  local build_status_value=$1
   local target
-  local version="${TRAVIS_BUILD_NUMBER}"
   local project_name="$(basename ${TRAVIS_BUILD_DIR})"
-  local name="${project_name}-${TRAVIS_JOB_NUMBER}-${config_smalltalk}"
+  local name="${project_name}-${TRAVIS_COMMIT}-${config_smalltalk}"
   local image_name="${SMALLTALK_CI_BUILD}/${name}.image"
   local changes_name="${SMALLTALK_CI_BUILD}/${name}.changes"
   local publish=false
 
-  if is_empty "${BINTRAY_CREDENTIALS:-}" || \
-      [[ "${TRAVIS_PULL_REQUEST}" != "false" ]]; then
-    return
-  fi
+  print_info "Deploy..."
 
-  if ! signals_error "${build_status_value}"; then
-    if is_empty "${BINTRAY_RELEASE:-}" || \
-        [[ "${TRAVIS_BRANCH}" != "master" ]]; then
-      return
-    fi
-    target="${BINTRAY_API}/${BINTRAY_RELEASE}/${version}"
-    publish=true
-  else
-    if is_empty "${BINTRAY_FAIL:-}"; then
-      return
-    fi
-    target="${BINTRAY_API}/${BINTRAY_FAIL}/${version}"
-  fi
+  fold_start deploy "Deploying to ..."
 
-  fold_start deploy "Deploying to bintray.com..."
-    pushd "${SMALLTALK_CI_BUILD}" > /dev/null
+  pushd "${SMALLTALK_CI_BUILD}" > /dev/null
 
-    print_info "Compressing and uploading image and changes files..."
-    mv "${SMALLTALK_CI_IMAGE}" "${name}.image"
-    mv "${SMALLTALK_CI_CHANGES}" "${name}.changes"
-    tar czf "${name}.tar.gz" "${name}.image" "${name}.changes"
-    curl -s -u "$BINTRAY_CREDENTIALS" -T "${name}.tar.gz" \
-        "${target}/${name}.tar.gz" > /dev/null
-    zip -q "${name}.zip" "${name}.image" "${name}.changes"
-    curl -s -u "$BINTRAY_CREDENTIALS" -T "${name}.zip" \
-        "${target}/${name}.zip" > /dev/null
+  print_info "Compressing image and changes files..."
+  mv "${SMALLTALK_CI_IMAGE}" "${name}.image"
+  mv "${SMALLTALK_CI_CHANGES}" "${name}.changes"
+  touch "${TRAVIS_COMMIT}.REVISION"
+  zip -q "travis-${name}.zip" "${name}.image" "${name}.changes" "${TRAVIS_COMMIT}.REVISION"
 
-    if signals_error "${build_status_value}"; then
-      # Check for xml files and upload them
-      if ls *.xml 1> /dev/null 2>&1; then
-        print_info "Compressing and uploading debugging files..."
-        mv "${TRAVIS_BUILD_DIR}/"*.fuel "${SMALLTALK_CI_BUILD}/" || true
-        find . -name "*.xml" -o -name "*.fuel" | tar czf "debug.tar.gz" -T -
-        curl -s -u "$BINTRAY_CREDENTIALS" \
-            -T "debug.tar.gz" "${target}/" > /dev/null
-      fi
-    fi
+  is_dir image || mkdir image
+  cp "travis-${name}.zip" "image/travis-${name}.zip"
+  cp -rf "travis-${name}.zip" "image/travis-${project_name}-lastSuccessfulBuild-${config_smalltalk}.zip"
 
-    if "${publish}"; then
-      print_info "Publishing ${version}..."
-      curl -s -X POST -u "$BINTRAY_CREDENTIALS" "${target}/publish" > /dev/null
-    fi
-
-    popd > /dev/null
+  popd > /dev/null
   fold_end deploy
 }
 
