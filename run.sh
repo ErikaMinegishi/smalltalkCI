@@ -431,7 +431,6 @@ clean_up() {
 # Deploy build artifacts to bintray if configured.
 ################################################################################
 deploy() {
-  local build_status=$1
   local target
   local project_name="$(basename ${TRAVIS_BUILD_DIR})"
   local name="${project_name}-${TRAVIS_COMMIT}-${config_smalltalk}"
@@ -521,7 +520,7 @@ main() {
   run "$@"
 
   if is_travis_build; then
-    deploy "${status}"
+    deploy
   fi
 
   finalize
