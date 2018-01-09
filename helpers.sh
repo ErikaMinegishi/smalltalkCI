@@ -32,11 +32,8 @@ print_error() {
 }
 
 print_error_and_exit() {
-  local error_code="${2:-1}" # 2nd parameter, 1 if not set
-
   print_error "$1"
-  report_build_metrics "${error_code}"
-  exit "${error_code}"
+  exit "${2:-1}" # 2nd parameter, 1 if not set
 }
 
 print_help() {
@@ -206,26 +203,59 @@ debug_enabled() {
   [[ "${config_debug}" = "true" ]]
 }
 
-check_build_status() {
-  local build_status
-  if is_file "${BUILD_STATUS_FILE}"; then
-    build_status=$(cat "${BUILD_STATUS_FILE}")
-    if is_nonzero "${build_status}"; then
-      exit 1
-    fi
-  fi
+signals_error() {
+  [[ $1 != "[success]" ]]
 }
 
-check_final_build_status() {
+current_build_status_signals_error() {
+  if ! is_file "${BUILD_STATUS_FILE}"; then
+    print_error "Build was unable to report intermediate build status."
+    return 0
+  fi
+  if signals_error "$(cat "${BUILD_STATUS_FILE}")"; then
+    return 0
+  fi
+  return 1
+}
+
+consume_build_status_file() {
+  rm -f "${BUILD_STATUS_FILE}"
+}
+
+check_and_consume_build_status_file() {
   local build_status
 
+  if current_build_status_signals_error; then
+    build_status="$(cat "${BUILD_STATUS_FILE}")"
+    if [[ "${build_status}" == "[test failure]" ]]; then
+      exit 1
+    fi
+    print_error_and_exit "${build_status}"
+  fi
+  consume_build_status_file
+}
+
+finalize() {
+  local build_status
+
+  if is_travis_build || is_appveyor_build; then
+    upload_coveralls_results
+  fi
+
   if ! is_file "${BUILD_STATUS_FILE}"; then
-    print_error_and_exit "Build failed before tests were performed correctly."
+    print_error_and_exit "Build was unable to report final build status."
   fi
   build_status=$(cat "${BUILD_STATUS_FILE}")
-  report_build_metrics "${build_status}"
-  if is_nonzero "${build_status}"; then
+  if is_travis_build; then
+    deploy "${build_status}"
+  fi
+  if signals_error "${build_status}"; then
+    if [[ "${build_status}" != "[test failure]" ]]; then
+      print_error_and_exit "${build_status}"
+    fi
     exit 1
+  else
+   exit 0
   fi
 }
 
@@ -283,7 +313,7 @@ git_log() {
   local format_value=$1
   local output
   output=$(git --no-pager log -1 --pretty=format:"${format_value}")
-  echo "${output/\"/\\\"}" # Escape double quotes
+  echo "${output//\"/\\\"}" # Escape double quotes
 }
 
 
@@ -310,7 +340,7 @@ export_coveralls_data() {
     job_id="${CI_PIPELINE_ID}.${CI_JOB_ID}"
   fi
 
-  cat >"${SMALLTALK_CI_BUILD}/coveralls_data.json" <<EOL
+  cat >"${SMALLTALK_CI_BUILD}/coveralls_build_data.json" <<EOL
 {
   "git": {
     "branch": "${branch_name}",
@@ -381,6 +411,37 @@ report_build_metrics() {
           --header "X-BUILD-SMALLTALK: ${config_smalltalk}" \
           --header "X-BUILD-STATUS: ${build_status}" \
             "https://smalltalkci.fniephaus.com/api/" > /dev/null || true
+}
+
+################################################################################
+# Deploy build artifacts to bintray if configured.
+################################################################################
+deploy() {
+  local target
+  local project_name="$(basename ${TRAVIS_BUILD_DIR})"
+  local name="${project_name}-${TRAVIS_COMMIT}-${config_smalltalk}"
+  local image_name="${SMALLTALK_CI_BUILD}/${name}.image"
+  local changes_name="${SMALLTALK_CI_BUILD}/${name}.changes"
+  local publish=false
+
+  print_info "Deploy..."
+
+  fold_start deploy "Deploying to ..."
+
+  pushd "${SMALLTALK_CI_BUILD}" > /dev/null
+
+  print_info "Compressing image and changes files..."
+  mv "${SMALLTALK_CI_IMAGE}" "${name}.image"
+  mv "${SMALLTALK_CI_CHANGES}" "${name}.changes"
+  touch "${TRAVIS_COMMIT}.REVISION"
+  zip -q "travis-${name}.zip" "${name}.image" "${name}.changes" "${TRAVIS_COMMIT}.REVISION"
+
+  is_dir image || mkdir image
+  cp "travis-${name}.zip" "image/travis-${name}.zip"
+  cp -rf "travis-${name}.zip" "image/travis-${project_name}-lastSuccessfulBuild-${config_smalltalk}.zip"
+
+  popd > /dev/null
+  fold_end deploy
 }
 
 

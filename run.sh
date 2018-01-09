@@ -14,6 +14,7 @@ readonly BINTRAY_API="https://api.bintray.com/content"
 initialize() {
   local resolved_path
 
+  trap handle_exit EXIT
   trap handle_error ERR
   trap handle_interrupt INT
 
@@ -71,13 +72,20 @@ initialize() {
 }
 
 ################################################################################
+# Exit handler.
+################################################################################
+handle_exit() {
+  local error_code=$?
+  report_build_metrics "${error_code}"
+  exit "${error_code}"
+}
+
+################################################################################
 # Print error information and exit.
 ################################################################################
 handle_error() {
   local error_code=$?
   local i
-
-  report_build_metrics "${error_code}"
 
   printf "\n"
   print_notice "Error with status code ${error_code}:"
@@ -420,38 +428,6 @@ clean_up() {
 }
 
 ################################################################################
-# Deploy build artifacts to bintray if configured.
-################################################################################
-deploy() {
-  local build_status=$1
-  local target
-  local project_name="$(basename ${TRAVIS_BUILD_DIR})"
-  local name="${project_name}-${TRAVIS_COMMIT}-${config_smalltalk}"
-  local image_name="${SMALLTALK_CI_BUILD}/${name}.image"
-  local changes_name="${SMALLTALK_CI_BUILD}/${name}.changes"
-  local publish=false
-
-  print_info "Deploy..."
-
-  fold_start deploy "Deploying to ..."
-
-  pushd "${SMALLTALK_CI_BUILD}" > /dev/null
-
-  print_info "Compressing image and changes files..."
-  mv "${SMALLTALK_CI_IMAGE}" "${name}.image"
-  mv "${SMALLTALK_CI_CHANGES}" "${name}.changes"
-  touch "${TRAVIS_COMMIT}.REVISION"
-  zip -q "travis-${name}.zip" "${name}.image" "${name}.changes" "${TRAVIS_COMMIT}.REVISION"
-
-  is_dir image || mkdir image
-  cp "travis-${name}.zip" "image/travis-${name}.zip"
-  cp -rf "travis-${name}.zip" "image/travis-${project_name}-lastSuccessfulBuild-${config_smalltalk}.zip"
-
-  popd > /dev/null
-  fold_end deploy
-}
-
-################################################################################
 # Load platform-specific package and run the build.
 # Locals:
 #   config_smalltalk
@@ -499,7 +475,6 @@ main() {
   local config_tracking="true"
   local config_verbose="false"
   local config_vm=""
-  local status=0
 
   initialize "$@"
   parse_options "$@"
@@ -512,16 +487,7 @@ main() {
   export_coveralls_data
   prepare_environment
   run "$@"
-
-  if is_travis_build || is_appveyor_build; then
-    upload_coveralls_results
-  fi
-
-  if is_travis_build; then
-    deploy "${status}"
-  fi
-
-  check_final_build_status
+  finalize
 }
 
 # Run main if script is not being tested
