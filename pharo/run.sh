@@ -21,6 +21,9 @@ pharo::get_image_url() {
     "Pharo64-stable")
       echo "get.pharo.org/64/stable"
       ;;
+    "Pharo64-8.0")
+      echo "get.pharo.org/64/80"
+      ;;
     "Pharo64-7.0")
       echo "get.pharo.org/64/70"
       ;;
@@ -102,6 +105,9 @@ pharo::get_vm_url() {
     "Pharo64-alpha")
       echo "get.pharo.org/64/vmLatest70"
       ;;
+    "Pharo64-8.0")
+      echo "get.pharo.org/64/vm80"
+      ;;
     "Pharo64-7.0")
       echo "get.pharo.org/64/vm70"
       ;;
@@ -150,6 +156,7 @@ pharo::prepare_vm() {
   local pharo_vm_url="$(pharo::get_vm_url "${smalltalk_name}")"
   local pharo_vm_folder="${SMALLTALK_CI_VMS}/${smalltalk_name}"
   local pharo_zeroconf="${pharo_vm_folder}/zeroconfig"
+  local target="${SMALLTALK_CI_CACHE}/${smalltalk_name}"
 
   # Skip in case vm is already set up
   if is_file "${SMALLTALK_CI_VM}"; then
@@ -215,7 +222,7 @@ pharo::prepare_image() {
     cp "${target}/"*.image "${SMALLTALK_CI_IMAGE}"
     cp "${target}/"*.changes "${SMALLTALK_CI_CHANGES}"
     if ls "${target}/"*.sources 1> /dev/null 2>&1; then
-      cp "${target}/"*.sources "${SMALLTALK_CI_BUILD}"
+      cp "${target}/"*.sources "${SMALLTALK_CI_SOURCES}"
     fi
   fi
 
@@ -223,7 +230,7 @@ pharo::prepare_image() {
   cp "${target}/"*.image "${SMALLTALK_CI_IMAGE}"
   cp "${target}/"*.changes "${SMALLTALK_CI_CHANGES}"
   if ls "${target}/"*.sources 1> /dev/null 2>&1; then
-    cp "${target}/"*.sources "${SMALLTALK_CI_BUILD}"
+    cp "${target}/"*.sources "${SMALLTALK_CI_SOURCES}"
   fi
 }
 
@@ -256,6 +263,9 @@ pharo::prepare_moose_image() {
   unzip -q "${target}" -d "${SMALLTALK_CI_BUILD}"
   mv "${SMALLTALK_CI_BUILD}/"*.image "${SMALLTALK_CI_IMAGE}"
   mv "${SMALLTALK_CI_BUILD}/"*.changes "${SMALLTALK_CI_CHANGES}"
+  if ls "${SMALLTALK_CI_BUILD}/"*.sources 1> /dev/null 2>&1; then
+    mv "${SMALLTALK_CI_BUILD}/"*.sources "${SMALLTALK_CI_SOURCES}"
+  fi
 
   if ! is_file "${SMALLTALK_CI_IMAGE}"; then
     print_error_and_exit "Failed to prepare image at '${SMALLTALK_CI_IMAGE}'."
