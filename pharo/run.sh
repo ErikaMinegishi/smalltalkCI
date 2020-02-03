@@ -21,6 +21,9 @@ pharo::get_image_url() {
     "Pharo64-stable")
       echo "get.pharo.org/64/stable"
       ;;
+    "Pharo64-8.0")
+      echo "get.pharo.org/64/80"
+      ;;
     "Pharo64-7.0")
       echo "get.pharo.org/64/70"
       ;;
@@ -101,6 +104,9 @@ pharo::get_vm_url() {
     # NOTE: vmLatestXX should be updated every time new Pharo is released
     "Pharo64-alpha")
       echo "get.pharo.org/64/vmLatest70"
+      ;;
+    "Pharo64-8.0")
+      echo "get.pharo.org/64/vm80"
       ;;
     "Pharo64-7.0")
       echo "get.pharo.org/64/vm70"
@@ -216,6 +222,7 @@ pharo::prepare_image() {
     cp "${target}/"*.changes "${SMALLTALK_CI_CHANGES}"
     if ls "${target}/"*.sources 1> /dev/null 2>&1; then
       cp "${target}/"*.sources "${SMALLTALK_CI_BUILD}"
+      cp "${target}/"*.sources "${SMALLTALK_CI_SOURCES}"
     fi
   fi
 
@@ -224,6 +231,7 @@ pharo::prepare_image() {
   cp "${target}/"*.changes "${SMALLTALK_CI_CHANGES}"
   if ls "${target}/"*.sources 1> /dev/null 2>&1; then
     cp "${target}/"*.sources "${SMALLTALK_CI_BUILD}"
+    cp "${target}/"*.sources "${SMALLTALK_CI_SOURCES}"
   fi
 }
 
