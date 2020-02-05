@@ -432,13 +432,15 @@ deploy() {
 
   mv "${SMALLTALK_CI_IMAGE}" "${name}.image"
   mv "${SMALLTALK_CI_CHANGES}" "${name}.changes"
+  # cp "${SMALLTALK_CI_SOURCE_DIR}/*.sources" "./"
 
-  ls "Pharo*.sources"
+  # ls "${SMALLTALK_CI_SOURCE_DIR}/*.sources" 2>&1
  
   touch "${TRAVIS_COMMIT}.REVISION"
-  if ls "Pharo*.sources" 1> /dev/null 2>&1; then
+  if ls "${SMALLTALK_CI_SOURCE_DIR}/*.sources" 1> /dev/null 2>&1; then
     print_info "Compressing image, changes and sources files..."
-    zip -q "travis-${name}.zip" "${name}.image" "${name}.changes" "Pharo*.sources" "${TRAVIS_COMMIT}.REVISION"
+    zip -q "travis-${name}.zip" "${name}.image" "${name}.changes" "${TRAVIS_COMMIT}.REVISION"
+    # zip -q "travis-${name}.zip" "${name}.image" "${name}.changes" "${SMALLTALK_CI_SOURCE_DIR}/*.sources" "${TRAVIS_COMMIT}.REVISION"
   else
     print_info "Compressing image and changes files..."
     zip -q "travis-${name}.zip" "${name}.image" "${name}.changes" "${TRAVIS_COMMIT}.REVISION"
