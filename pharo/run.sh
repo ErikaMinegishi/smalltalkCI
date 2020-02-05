@@ -222,7 +222,6 @@ pharo::prepare_image() {
     cp "${target}/"*.changes "${SMALLTALK_CI_CHANGES}"
     if ls "${target}/"*.sources 1> /dev/null 2>&1; then
       cp "${target}/"*.sources "${SMALLTALK_CI_BUILD}"
-      cp "${target}/"*.sources "${SMALLTALK_CI_SOURCES}"
     fi
   fi
 
@@ -231,7 +230,6 @@ pharo::prepare_image() {
   cp "${target}/"*.changes "${SMALLTALK_CI_CHANGES}"
   if ls "${target}/"*.sources 1> /dev/null 2>&1; then
     cp "${target}/"*.sources "${SMALLTALK_CI_BUILD}"
-    cp "${target}/"*.sources "${SMALLTALK_CI_SOURCES}"
   fi
 }
 
