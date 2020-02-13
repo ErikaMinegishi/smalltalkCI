@@ -438,7 +438,7 @@ deploy() {
   mv "${SMALLTALK_CI_IMAGE}" "${name}.image"
   mv "${SMALLTALK_CI_CHANGES}" "${name}.changes"
 
-  ls "${SMALLTALK_CI_BOUILD}/*.sources" 2>&1
+  ls "${SMALLTALK_CI_BUILD}/*.sources" 2>&1
   ls "${SMALLTALK_CI_SOURCES_DIR}/*.sources" 2>&1
  
   touch "${TRAVIS_COMMIT}.REVISION"
