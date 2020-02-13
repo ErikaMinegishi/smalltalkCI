@@ -422,8 +422,7 @@ deploy() {
   local name="${project_name}-${TRAVIS_COMMIT}-${config_smalltalk}"
   local image_name="${SMALLTALK_CI_BUILD}/${name}.image"
   local changes_name="${SMALLTALK_CI_BUILD}/${name}.changes"
-  print_info "${SMALLTALK_CI_SOURCES_DIR}"
-  local sources_name=`ls "${SMALLTALK_CI_SOURCES_DIR}/*.sources 2> /dev/null"`
+  local sources_name=`ls "${SMALLTALK_CI_BUILD}" > >(grep sources)`
   print_info "${sources_name}"
   local publish=false
 
@@ -431,21 +430,15 @@ deploy() {
 
   fold_start deploy "Deploying to ..."
 
-  print_info "${SMALLTALK_CI_BUILD}:"
-  ls ${SMALLTALK_CI_BUILD}
   pushd "${SMALLTALK_CI_BUILD}" > /dev/null
 
   mv "${SMALLTALK_CI_IMAGE}" "${name}.image"
   mv "${SMALLTALK_CI_CHANGES}" "${name}.changes"
 
-  ls "${SMALLTALK_CI_BUILD}/*.sources" 2>&1
-  ls "${SMALLTALK_CI_SOURCES_DIR}/*.sources" 2>&1
- 
   touch "${TRAVIS_COMMIT}.REVISION"
-  if ls "${SMALLTALK_CI_SOURCES_DIR}/*.sources" 1> /dev/null 2>&1; then
+  if [ -n "$sources_name" ]; then
     print_info "Compressing image, changes and sources files..."
-    print_info "${SMALLTALK_CI_SOURCES_DIR}/${sources_name}"
-    zip -q "travis-${name}.zip" "${name}.image" "${name}.changes" "${SMALLTALK_CI_SOURCES_DIR}/${sources_name}" "${TRAVIS_COMMIT}.REVISION"
+    zip -q "travis-${name}.zip" "${name}.image" "${name}.changes" "${sources_name}" "${TRAVIS_COMMIT}.REVISION"
   else
     print_info "Compressing image and changes files..."
     zip -q "travis-${name}.zip" "${name}.image" "${name}.changes" "${TRAVIS_COMMIT}.REVISION"
